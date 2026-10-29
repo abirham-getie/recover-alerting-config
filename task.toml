@@ -1,7 +1,7 @@
 artifacts = ["/app/output/alerting_config.csv", "/app/output/alert_ledger.csv"]
 
 [task]
-name = "dynamo/recover-alerting-config"
+name = "abirham/recover-alerting-config"
 description = "Recover the cheapest alerting configuration, drawn from a published catalogue of 191 candidate rules, under which replaying a 24000 instant scrape history reproduces a 33126 notification incident history exactly, and write the configuration and the per episode ledger it implies byte for byte."
 
 [metadata]
@@ -188,8 +188,9 @@ timeout_sec = 600.0                # the sixteen checks measure 47 s on the benc
 
 [agent]
 timeout_sec = 72000.0              # 20 hours, the FrontierSWE long-horizon budget.
-                                   # Built at 16 expert-hours; the Dynamo cap of 3600
-                                   # was a platform ceiling, not a property of the task.
+                                   # Built at 16 expert-hours. It was authored under a
+                                   # 3600 s platform ceiling; that was the harness, not the
+                                   # task, and the search is what fills the longer budget.
 
 [environment]
 build_timeout_sec = 300.0          # the build is one apt install and a 95 MB copy

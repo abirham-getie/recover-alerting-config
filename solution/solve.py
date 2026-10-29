@@ -1350,8 +1350,8 @@ import time
 # generator passes both in the environment; the image passes neither, so a
 # default of anything but these two paths makes the reference fail on the
 # first read inside the container.
-DATA = os.environ.get("DYNAMO_DATA", "/app/data")
-OUTPUT = os.environ.get("DYNAMO_OUTPUT", "/app/output")
+DATA = os.environ.get("TASK_DATA", "/app/data")
+OUTPUT = os.environ.get("TASK_OUTPUT", "/app/output")
 
 
 def announce(text):

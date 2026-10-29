@@ -1378,8 +1378,8 @@ import stat
 # image actually carries, so the module reads the same two directories whether
 # it is driven by the sealed runner or imported on its own, and an override is
 # honoured wherever one is given.
-DATA = os.environ.get("DYNAMO_DATA", "/app/data")
-OUTPUT = os.environ.get("DYNAMO_OUTPUT", "/app/output")
+DATA = os.environ.get("TASK_DATA", "/app/data")
+OUTPUT = os.environ.get("TASK_OUTPUT", "/app/output")
 
 LEDGER_HEADER = ("position,alertname,service,instance,rule_id,active_since,"
                  "firing_from,firing_to,firing_samples,notified_samples,"

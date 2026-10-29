@@ -12,17 +12,17 @@
 
 set -u
 
-DATA="${DYNAMO_DATA:-/app/data}"
-OUTPUT="${DYNAMO_OUTPUT:-/app/output}"
-CHECKS="${DYNAMO_CHECKS:-/tests/test_outputs.py}"
+DATA="${TASK_DATA:-/app/data}"
+OUTPUT="${TASK_OUTPUT:-/app/output}"
+CHECKS="${TASK_CHECKS:-/tests/test_outputs.py}"
 
 # THE REWARD CHANNEL. The harness reads /logs/verifier/reward.txt back out of
 # the container, so that is where the reward is written and nowhere else. An
 # earlier version of this file defaulted to /tmp/reward.txt, which no harness
 # reads: every trial then reported a missing reward file rather than a score.
-REWARD_ROOT="${DYNAMO_REWARD_ROOT:-/logs}"
-REWARD_DIR="${DYNAMO_REWARD_DIR:-$REWARD_ROOT/verifier}"
-REWARD="${DYNAMO_REWARD:-$REWARD_DIR/reward.txt}"
+REWARD_ROOT="${TASK_REWARD_ROOT:-/logs}"
+REWARD_DIR="${TASK_REWARD_DIR:-$REWARD_ROOT/verifier}"
+REWARD="${TASK_REWARD:-$REWARD_DIR/reward.txt}"
 
 # Resolve the tools this file runs, rather than letting a lookup path the agent
 # controls resolve them. The system directories come first, so an interpreter
@@ -169,8 +169,8 @@ _source = b"".join(_chunks).decode("utf-8")
 _space = {"__name__": "checks", "__builtins__": __builtins__}
 exec(compile(_source, "checks", "exec"), _space)
 
-_rows = _space["run_checks"](posix.environ[b"DYNAMO_DATA"].decode(),
-                             posix.environ[b"DYNAMO_OUTPUT"].decode())
+_rows = _space["run_checks"](posix.environ[b"TASK_DATA"].decode(),
+                             posix.environ[b"TASK_OUTPUT"].decode())
 _bad = 0
 for _name, _ok, _detail in _rows:
     sys.stdout.write("  %-6s %-46s %s\n"
@@ -184,7 +184,7 @@ PYEOF
 )
 
 progress "running the checks under a sealed interpreter"
-DYNAMO_DATA="$DATA" DYNAMO_OUTPUT="$OUTPUT" \
+TASK_DATA="$DATA" TASK_OUTPUT="$OUTPUT" \
   "$PYTHON" -I -S -B -c "$BOOTSTRAP" "$CHECKS"
 CODE=$?
 
