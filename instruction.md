@@ -1,0 +1,21 @@
+A monitoring stack's alerting configuration was lost with its config store. The scrape history and the notification history it produced survive, and so does a catalogue of every rule the stack could have been configured with. Recover the cheapest configuration that reproduces the notification history exactly, and the ledger of what it did.
+
+What survives is under `/app/data`. `/app/data/scrape_history.csv` is the sample by sample metrics history, 5278345 rows under the header `sample_at,series_id,value`, at a 15 second scrape interval with the gaps a real scrape has, ordered by `series_id` and then by `sample_at`. `/app/data/series_index.csv` names the 220 series. `/app/data/notification_log.csv` is every alert instance that reached the notification pipeline: one row per member per notification, under the header `notification_id,sent_at,group_key,member_index,alertname,service,instance,status,starts_at,ends_at`. `/app/data/rule_catalogue.csv` is the catalogue of 191 candidate rules, each with a cost, under the header `rule_id,kind,alertname,metric,expr,threshold,for_sec,source_alertname,target_alertname,equal_labels,match_label,match_value,window_start,window_end,cost`. `/app/data/target_labels.csv` carries the labels of each scrape target, `/app/data/label_registry.csv` the inventory name of each one, and `/app/data/control_totals.csv` four control totals over the published files, which are there for you to reconcile your reading of them against.
+
+The catalogue carries three kinds of rule. An `alert` rule fires on a target once its condition has held continuously for a stated duration. A `silence` suppresses matching alert instances inside a window. An `inhibit` suppresses one alertname while another is firing on labels it names. A suppressed alert instance does not reach the notification pipeline.
+
+The pipeline groups alerts by service, waits, and batches what it sends. A group sends at most a fixed number of members in one notification and queues the rest for a later one; it says an episode again if it is still firing after a set interval; and it flushes whatever is outstanding at the last evaluation instant.
+
+`/app/data/ALERTING_STANDARD.md` is normative. Sections 3 to 14 fix the evaluation instants, freshness and staleness, counter resets and the rate, what a rule's condition is, what firing is, what each kind of suppression does, how the notification pipeline groups, waits, batches, budgets, queues, repeats and numbers what it sends, what a member's status and `ends_at` carry, which configuration is the answer, both files you produce, every column of each, and the order of the rows. Where the standard and a shipped table both speak, they agree. Nothing outside the standard decides anything.
+
+Produce `/app/output/alerting_config.csv`, one row for every rule of the answer configuration, with the header
+
+`position,rule_id,kind,alertname,cost,episodes_produced,episodes_suppressed,notifications_carried`
+
+and `/app/output/alert_ledger.csv`, one row for every firing episode that configuration produced, with the header
+
+`position,alertname,service,instance,rule_id,active_since,firing_from,firing_to,firing_samples,notified_samples,suppressed_by,first_notification,last_notification,first_member_index,resolved_at`
+
+Every column of both files is defined by sections 11 and 12 of the standard, the row order of each by section 13, and the arithmetic behind them by sections 5 to 10. Both files are UTF-8, line feed terminated, and carry no padding, no quoting and no space beside any comma. `position`, `rule_id`, `cost`, `episodes_produced`, `episodes_suppressed`, `notifications_carried`, `active_since`, `firing_from`, `firing_to`, `firing_samples` and `notified_samples` are plain unsigned decimal integers; `suppressed_by`, `first_notification`, `last_notification`, `first_member_index` and `resolved_at` are each either a plain unsigned decimal integer or a single hyphen. No column in either file carries a fractional value.
+
+Both files must be complete and schema valid on disk early in the run, and kept that way as the answer improves, so that whatever moment the clock stops on, the disk holds a whole answer rather than a partial one. A value you cannot pin down is a reason to write your best row, never a reason to omit the row or truncate the file.

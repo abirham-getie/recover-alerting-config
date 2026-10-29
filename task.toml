@@ -1,0 +1,201 @@
+artifacts = ["/app/output/alerting_config.csv", "/app/output/alert_ledger.csv"]
+
+[task]
+name = "dynamo/recover-alerting-config"
+description = "Recover the cheapest alerting configuration, drawn from a published catalogue of 191 candidate rules, under which replaying a 24000 instant scrape history reproduces a 33126 notification incident history exactly, and write the configuration and the per episode ledger it implies byte for byte."
+
+[metadata]
+# --- Pre-seeded for you when this repo was created — DO NOT EDIT ---
+category = "Systems Infrastructure and Operations"
+subcategory = "Logging monitoring and observability"
+# --- Fixed for this dataset — LEAVE AS-IS ---
+model_tested = "Opus-4.8"
+agent_tested = "Terminus-2"
+# --- You fill these in ---
+task_objective = ["recover_or_repair_artifact", "optimize"]
+artifact_type = ["configuration_file", "dataset_or_tabular_file"]
+expert_time_estimate_hours = 16
+difficulty_explanation = """
+The answer is a pure function of what is shipped and nothing has to be searched
+for on the open internet, but it does have to be SEARCHED FOR, and every search
+that comes to mind first is priced here rather than guessed at.
+
+WHAT THE LOG DOES NOT SAY. The notification pipeline groups by service, and a
+group sends at most three members in one notification and queues the rest. A
+member is reported with its status AS OF THE INSTANT IT IS SENT, so an episode
+that stopped while it was still queued is reported resolved carrying the instant
+the group said so and not the instant it stopped. The log therefore does not pin
+the notifiable timeline. It bounds it. On the shipped instance the log PROVES
+532264 notifiable instants and PERMITS 769950, against a truth of 750729, so
+237686 instants, 31.7 per cent of the truth, are left open, and that slack is
+where the whole difficulty lives.
+
+WHY THE COVER IS ONLY A BOUND. Suppression can only take instants away, so a
+variant is admissible only if it fires at every instant the log proves, and
+whatever it fires beyond what the log permits has to be hidden by a selected
+suppressor. That condition is a covering problem and an attacker can write it
+down exactly. It is a RELAXATION. Solved on its own it returns 8543844 against
+an answer of 11404899, 25.09 per cent under, and the configuration it returns
+does not reproduce the history. 1218 configurations have to be replayed in
+ascending cost before one does.
+
+THE INTEGER PROGRAM, BUILT AND RUN. The exact product linearisation, with
+y[i,v] for every inhibition and every variant of its source and the three
+McCormick rows, is 154 columns over 880 rows and closes in 0.02 seconds. It
+reaches 8543844, which is the relaxed optimum exactly, so its bound sits 25.09
+per cent under the answer. Its pick shares 96.3 per cent of its rules with the
+answer, a symmetric difference of 2, and it still does not reproduce the
+history: 9591 single and paired additions were replayed against it and not one
+is feasible. A configuration that looks almost right, costs a quarter less, and
+cannot be repaired is the trap here.
+
+THE DECLARATIVE MODEL, ENUMERATED. An attacker who does not trust one optimum
+can forbid it with a no good row and solve again. 400 solutions of the model
+were enumerated and replayed in 381.9 seconds, running from 8543844 up to
+8687339. None reproduces the history, and the enumeration stops at 400 while
+still 2717560 under the answer.
+
+THE HONEST ENUMERATION. Walking the whole assignment space with the real oracle
+got through all 5308416 assignments in 457 seconds and reached a feasible
+configuration at 11490993, which is DEARER than the answer. Taking a cover under
+an assignment is not the same as taking the cheapest one, and the difference
+between those two is the whole of the remaining margin.
+
+WHAT MAKES THE RELAXATION LOOSE. The catalogue carries 3 SEPARATORS: variants
+that fire at every instant the log proves and not at every instant that was
+true. They exist because 503 of the 16596 notifiable episodes are never reported
+firing at all, only resolved, so no instant of them is proven, and a threshold
+above their plateau and below the major one misses them entirely. The widest
+such interval is 159.
+
+NO BOUNDED WINDOW SETTLES IT. A rule fires only once its condition has held
+continuously for its stated duration, so an alert's state at an instant is a
+function of the whole history of that series before it, and notification ids are
+numbered over the whole history, so one earlier notification anywhere shifts
+every later id.
+
+THE SEMANTICS UNDERNEATH. A missing scrape is not a zero; a short run leaves the
+series present and a long one takes it past the staleness horizon. A counter
+reset contributes its own value. The rate is floored integer arithmetic over a
+half open window whose span is the distance between the samples present. A
+silence window is half open. A label that is ABSENT is not a label whose value
+is empty. An inhibition is decided by whether its source is FIRING and not by
+whether the source is itself notifiable. Twenty seven clauses of the standard
+were built as mutants that decide exactly one clause the other way and re-derive
+both deliverables; every one of them moves at least one graded row, several of
+them tens of thousands, and the instance was not drawn until that held.
+
+Then the requirement nothing confirms. The ledger's `instance` column is the
+canonical instance that `/app/data/label_registry.csv` alone gives, and section
+13.2 orders the ledger by that column. Every published byte is identical with
+and without the transformation, and the inventory numbering runs in the opposite
+direction to the order the targets appear in, so a solver that writes the scrape
+label instead is wrong twice.
+
+Both deliverables are graded byte for byte over 24222 rows and 338790 cells with
+no tolerance anywhere and no floating point value in either file. All data is
+synthetic and produced by the generator in this repository from a pinned seed,
+and the generator refuses to emit unless every floor is measured and in band.
+"""
+solution_explanation = """
+Five passes and one search.
+
+The first reads the published files. The scrape history is 91 megabytes and 5.3
+million samples; it is ordered by `series_id` and then by `sample_at`, so it is
+read one series at a time and folded into masks rather than held. The reference
+peaks at 217 megabytes.
+
+The second recovers what the notification log pins down, which is not one
+timeline but two masks. Every episode's `starts_at` is exact, so the instants
+between an episode's start and the last instant it was reported FIRING are
+proven notifiable. A resolve carries the instant the group said so, so the
+instants between the last proof and that notice are permitted but not proven.
+
+The third prices every one of the 98 alert variants against the scrape history
+as a big integer per target, with the `for_sec` wait folded by a doubling shift
+and AND rather than a step per instant, and prices what every silence and every
+inhibition covers under each variant of its source.
+
+The fourth compresses the cover. Two cells covered by exactly the same set of
+suppressors are interchangeable, so the cover is posed over the CLASSES of cells
+sharing a suppressor signature: 394 classes rather than millions of cells, which
+is what makes an exact cover affordable as a bound at every node.
+
+That leaves the search. The relaxed cover is a lower bound and it is monotone,
+so the exact cover of a prefix plus the cheapest variant of every alertname not
+yet assigned is admissible, and A star over that bound pops configurations in
+ascending cost. Each is replayed against the published history and the first
+that matches is the answer, 1219 replays in. A candidate is rejected at its
+first divergent notification, in the group carrying the fewest of them, and a
+group's verdict is reused across candidates that differ only in a suppressor
+that group never sees. The reference does all of it in 37 seconds of pure
+Python with no solver library.
+
+Among configurations of equal cost, section 10.2 takes the one whose rule ids
+form the least ascending sequence.
+"""
+verification_explanation = """
+Every comparison is an exact integer or string equality. There is no tolerance
+anywhere, no inequality band, and no floating point value in either graded file.
+The pair carries 24222 graded rows, 24169 in the ledger and 53 in the
+configuration, across 15 and 8 exact columns, 338790 graded cells in total.
+
+The structural checks read each file through a guarded opener that walks the
+path one component at a time from the root with O_NOFOLLOW, refuses a symbolic
+link, refuses a file carrying a second link and anything that is not a regular
+file, and validate header, row count, row numbering, column form and file form,
+the last folding in the exact trailing line feed, the carriage return and the
+blank line, before a single value is graded.
+
+The eight published files are sealed by length and SHA-256. The digest is
+computed from `_sha256`, which is compiled into the interpreter, and a pure
+Python SHA-256 is carried alongside it and agrees with it byte for byte, so no
+module that lives in a file is needed on this path.
+
+The oracle re-derives the answer inside the check module from the published
+bytes alone and requires the submission to equal what it reaches. It is the same
+five passes the reference makes, and it reproduces the emission byte for byte.
+Three further checks re-derive the ledger and the configuration counts from the
+SUBMISSION's own rules, so a planted pair fails even if it is well formed.
+
+The shipped runner carries sixteen checks and nothing else: that each
+deliverable is well formed and ordered and carries no fractional value, that the
+eight published files are sealed by length and SHA-256, that every rule named is
+a catalogue row and no alertname carries two alert rules, that the submission
+reproduces the history, that the ledger is what the submitted configuration
+produces and the configuration counts fold out of the ledger, that the
+configuration is the answer the oracle reaches, and that the four control totals
+reconcile. It runs in 47 seconds on the bench against a 600 second budget.
+
+The figures below are the measurements that chose this instance rather than
+checks the runner performs. Twenty seven clauses of the standard were built as
+mutants that decide exactly one clause the other way and re-derived both
+deliverables under it. Every one moves at least one graded row: the grouping label 16486, the global numbering
+16486, the spacing 16486, the first wait 16485, the absent label on an
+inhibition 16479, the repeat 16476, the absence of a repeat 16476, the budget
+16471, the queue order 15901, an inhibition read as needing a notifiable source
+18126, the half open silence window 10700, the absent label on a silence 10658,
+the instant a resolve carries 8567, the member order 2183, the flush obeying the
+budget 29, the absence of a flush 30, and eleven clauses of the scrape reading
+that move the firing masks of the answer's own rules.
+
+Fourteen tampered submissions were run through the real runner and every one of
+them scores 0, with the control scoring 1.
+"""
+
+[verifier]
+timeout_sec = 600.0                # the sixteen checks measure 47 s on the bench
+
+[agent]
+timeout_sec = 72000.0              # 20 hours, the FrontierSWE long-horizon budget.
+                                   # Built at 16 expert-hours; the Dynamo cap of 3600
+                                   # was a platform ceiling, not a property of the task.
+
+[environment]
+build_timeout_sec = 300.0          # the build is one apt install and a 95 MB copy
+cpus = 1                           # the reference is one pass over each published file
+memory_mb = 2048                   # the reference peaks at 217 MB
+storage_mb = 4096                  # the published files are 95.5 MB in total
+gpus = 0
+allow_internet = true
+mcp_servers = []
